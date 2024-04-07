@@ -23,6 +23,7 @@ jobs:
             virtualenvs-create: true
         -   name: "Main Script"
             run: |
+                poetry install
                 poetry run flake8 fillform
                 poetry run mypy fillform
 
