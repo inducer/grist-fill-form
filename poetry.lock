@@ -606,6 +606,17 @@ files = [
 ]
 
 [[package]]
+name = "types-markdown"
+version = "3.6.0.20240316"
+description = "Typing stubs for Markdown"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "types-Markdown-3.6.0.20240316.tar.gz", hash = "sha256:de9fb84860b55b647b170ca576895fcca61b934a6ecdc65c31932c6795b440b8"},
+    {file = "types_Markdown-3.6.0.20240316-py3-none-any.whl", hash = "sha256:d3ecd26a940781787c7b57a0e3c9d77c150db64e12989ef687059edc83dfd78a"},
+]
+
+[[package]]
 name = "typing-extensions"
 version = "4.11.0"
 description = "Backported and Experimental Type Hints for Python 3.8+"
@@ -668,4 +679,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4"
-content-hash = "e1a130a3bd27411b518f8b35e03508f62c5fcf70f72ff6b504935cf9848000dc"
+content-hash = "bfc3186d288428e99c601f0f591be84edc2c5705f8f5166dbfb8abbe484dc3d4"
