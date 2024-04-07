@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+  {{ header | safe }}
+
+  <form id="fillinForm" method="POST" class="mt-3">
+    {% for widget in widgets %}
+      <div class="mb-3">
+        {% if widget.type == "text" %}
+          <label for="{{ widget.id }}" class="form-label">{{ widget.label }}</label>
+          <input 
+            type="text" 
+            class="form-control {% if widget.validation_message %} is-invalid {% endif %}"
+            id="{{ widget.id }}" name="{{ widget.id }}" value="{{ widget.value }}"
+            aria-describedby="{{ widget.id}}_feedback">
+          <div class="invalid-feedback" id="{{ widget.id }}_feedback">
+            {{ widget.validation_message }}
+          </div>
+        {% elif widget.type == "yesno" %}
+          <label for="{{ widget.id }}_yes" class="form-label">{{ widget.label }}</label>
+          {% for value, answer in [(1, "yes"), (0, "no")] %}
+            <div class="form-check">
+              <input 
+                class="form-check-input {% if widget.validation_message %} is-invalid {% endif %}"
+                type="radio" name="{{ widget.id }}" id="{{ widget.id}}_{{ answer }}"
+                value="{{ value }}"
+                aria-describedby="{{ widget.id}}_feedback">
+              <label class="form-check-label" for="{{ widget.id }}_{{ answer }}">{{ answer }}</label>
+            {% if widget.validation_message %}
+              <div class="invalid-feedback" id="{{ widget.id }}_feedback">
+                {{ widget.validation_message }}
+              </div>
+            {% endif %}
+            </div>
+          {% endfor %}
+        {% else %}
+          {{ unknown_widget_type }}
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    <button type="submit" id="submitButton" class="btn btn-primary">Submit</button>
+  </form>
+{% endblock %}

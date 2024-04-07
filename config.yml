@@ -1,0 +1,85 @@
+grist_root_url:  https://scicomp-grist.cs.illinois.edu
+grist_api_key_file: /home/andreas/.grist-uiuc-api-key
+grist_doc_id: s7VzXiAHXbwgivucYprb6z
+
+forms:
+  conflict:
+    table: Conflict_reports
+    key_column: "Key"
+    response_time_column: "Responded"
+
+    header_markdown: |
+      # Conflict of Interest for Academic Integrity Hearing
+
+      Dear {{ Full_name_NetID }},
+
+      Please indicate whether you have a conflict of interest
+      with the appellant(s) <b>{{ Appellants }}</b> for
+      [FAIR case {{ Case_ID }}]({{ Case_URL }}).
+
+      <div class="card mb-3" markdown="block">
+      <div class="card-header">
+        <h5 class="card-title dropdown-toggle">
+        <a class="text-decoration-none link-dark"
+        data-bs-toggle="collapse" href="#conflict-explainer" aria-expanded="false" aria-controls="conflict-explainer">
+        What is a conflict of interest?
+        </a>
+        </h5>
+      </div>
+
+      <div id="conflict-explainer" class="collapse" markdown="block">
+        <div class="card-body" markdown="block">
+        The following are examples of conflicts of interest:
+
+        - You know them well through either personal or university activities.
+        - They are in a class that you are currently teaching.
+        - You are working with them on a project.
+        - You have in the past pursued a FAIR (or other disciplinary) case
+          against them.
+
+        The following is not a conflict of interest:
+
+        - They were in a class you have taught in the past, and they
+          have already been assigned their final grade.
+      
+        When in doubt, please [ask](mailto:andreask@illinois.edu),
+        or feel free to assume a conflict exists.
+
+        </div>
+      </div>
+      </div>
+
+    # Optional, only effective if both are provided.
+    notify_from: andreask@illinois.edu
+    notify_to: andreask@illinois.edu
+
+    notify_if: Have_conflict or Comment
+    notify_subject: >
+      {% if Have_conflict %}
+        {{ Full_name_NetID }} has a conflict for FAIR{{ Case_ID }}
+      {% else %}
+        {{ Full_name_NetID }} has a comment for FAIR{{ Case_ID }}
+      {% endif %}
+
+    notify_email: |
+
+      Dear notification recipient,
+
+      {{ Full_name_NetID }} has responded to the conflict poll for FAIR{{ Case_ID }},
+      with the following data:
+
+      Have conflict: {{ Have_conflict }}
+      Comment: {{ Comment }}
+
+      Sincerely,
+      The form tool
+
+    widgets:
+
+      - column: Have_conflict
+        type: yesno
+        
+      - column: Comment
+        label: "Any comments? (optional)"
+        type: text
+        optional: true

@@ -1,0 +1,29 @@
+name: CI
+on:
+    push:
+        branches:
+        - main
+    pull_request:
+    schedule:
+        - cron:  '17 3 * * 0'
+
+jobs:
+    python-lint:
+        runs-on: ubuntu-latest
+        steps:
+        -   uses: actions/checkout@v4
+        -
+            uses: actions/setup-python@v5
+            with:
+                python-version: '3.x'
+          - name: Install Poetry
+            uses: snok/install-poetry@v1.3.4
+            with:
+              version: "1.8.2"
+              virtualenvs-create: true
+        -   name: "Main Script"
+            run: |
+                poetry run flake8 fillform
+                poetry run mypy fillform
+
+# vim: sw=4
