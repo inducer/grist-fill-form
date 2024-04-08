@@ -14,13 +14,13 @@ from typing_extensions import Tuple
 
 
 YAML_SCHEMA = Map({
-    "grist_root_url": Str(),
-    "grist_api_key_file": Str(),
-    "grist_doc_id": Str(),
-
     "forms": MapPattern(
         Str(),
         Map({
+            "grist_root_url": Str(),
+            "grist_api_key_file": Str(),
+            "grist_doc_id": Str(),
+
             "table": Str(),
             "key_column": Str(),
             "response_time_column": Str(),
@@ -61,15 +61,6 @@ def get_config() -> Dict[str, Any]:
 
 
 CONFIG = get_config()
-
-GRIST_ROOT_URL = CONFIG["grist_root_url"]
-with open(CONFIG["grist_api_key_file"], "r") as inf:
-    GRIST_API_KEY = inf.read().strip()
-GRIST_DOC_ID = CONFIG["grist_doc_id"]
-
-
-CLIENT = GristClient(GRIST_ROOT_URL, GRIST_API_KEY, GRIST_DOC_ID)
-
 
 MSG_CAT_TO_BOOTSTRAP = {
     "error": "danger",
@@ -214,7 +205,14 @@ def fill_form(name: str, key: str):
 
     form_config = CONFIG["forms"][name]
 
-    rows = CLIENT.get_records(
+    grist_root_url = form_config["grist_root_url"]
+    with open(form_config["grist_api_key_file"], "r") as inf:
+        grist_api_key = inf.read().strip()
+    grist_doc_id = form_config["grist_doc_id"]
+
+    grist_client = GristClient(grist_root_url, grist_api_key, grist_doc_id)
+
+    rows = grist_client.get_records(
               form_config["table"],
               filter={form_config["key_column"]: [key]})
     if not rows:
@@ -281,7 +279,7 @@ def fill_form(name: str, key: str):
         }
         row_updates.update(user_input)
 
-        CLIENT.patch_records(form_config["table"], [(row_id, row_updates)])
+        grist_client.patch_records(form_config["table"], [(row_id, row_updates)])
 
         return respond_with_message("Thank you for submitting your response.")
     else:

@@ -1,9 +1,9 @@
-grist_root_url:  https://scicomp-grist.cs.illinois.edu
-grist_api_key_file: /home/andreas/.grist-uiuc-api-key
-grist_doc_id: s7VzXiAHXbwgivucYprb6z
-
 forms:
   conflict:
+    grist_root_url:  https://scicomp-grist.cs.illinois.edu
+    grist_api_key_file: /home/andreas/.grist-uiuc-api-key
+    grist_doc_id: s7VzXiAHXbwgivucYprb6z
+
     table: Conflict_reports
     key_column: "Key"
     response_time_column: "Responded"
