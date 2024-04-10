@@ -11,12 +11,21 @@ forms:
     header_markdown: |
       # Conflict of Interest for Academic Integrity Hearing
 
-      Dear {{ Full_name_NetID }},
+      {% if Request_type == "Direct" %}
+      Dear **{{ Full_name_NetID }}**,
 
       Please indicate whether you have a conflict of interest
-      with the appellant(s) <b>{{ Appellants }}</b> for
+      {%- elif Request_type == "Department" %}
+      Dear Steve,
+
+      Please indicate whether **{{ Full_name_NetID }}** has a conflict of interest
+      {%- else -%}
+      ??? Unexpected request type. Please contact [Andreas](mailto:andreask@illinois.edu).
+      {%- endif %}
+      with the appellant(s) **{{ Appellants }}** for
       [FAIR case {{ Case_ID }}]({{ Case_URL }}).
 
+      {% if Request_type == "Direct" %}
       <div class="card mb-3" markdown="block">
       <div class="card-header">
         <h5 class="card-title dropdown-toggle">
@@ -48,6 +57,7 @@ forms:
         </div>
       </div>
       </div>
+      {% endif %}
 
     # Optional, only effective if both are provided.
     notify_from: andreask@illinois.edu
@@ -77,7 +87,7 @@ forms:
     widgets:
 
       - column: Have_conflict
-        label: "I have a conflict of interest:"
+        label: "A conflict of interest exists:"
         type: yesno
         
       - column: Comment
