@@ -80,6 +80,7 @@ forms:
 
       Have conflict: {{ Have_conflict }}
       Comment: {{ Comment }}
+      Request type: {{ Request_type }}
 
       Sincerely,
       The form tool
