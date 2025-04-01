@@ -26,8 +26,8 @@ show data existing in the row to the user, to help them answer.
 
 Forms are public and require no authentication beyond knowledge of the `KEY`.
 
-To run, first run `poetry install` (see [poetry
-docs](https://python-poetry.org/docs/)), then run `dev.sh`. Generalize/deploy
+To run, first run `uv sync` (see [uv
+docs](https://docs.astral.sh/uv/)), then run `dev.sh`. Generalize/deploy
 from there.
 
 ## UWSGI config for deployment

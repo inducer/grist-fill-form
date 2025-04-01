@@ -1,41 +1,39 @@
 [build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-requires = [
-    "poetry>=0.12",
-]
-build-backend = "poetry.masonry.api"
-
-[tool.poetry]
+[project]
 name = "grist-fillform"
 version = "2024.1"
 description = "Mini web app to collect form responses for Grist"
 
 readme = "README.md"
 repository = "https://github.com/inducer/grist-fill-form"
-authors = ["Andreas Kloeckner <inform@tiker.net>"]
-packages = [
-    { include = "fillform" },
+authors = [
+    { name  = "Andreas Kloeckner", email="inform@tiker.net"}
 ]
 
-[tool.poetry.dependencies]
-python = ">=3.9,<4"
+requires-python = ">=3.10,<4"
+dependencies = [
+    "flask~=3.0.0",
+    "jinja2~=3.1.2",
+    "requests~=2.31",
+    "pygrist-mini~=2023.2.1",
+    "strictyaml~=1.7.3",
+    "markdown~=3.6",
+]
 
-flask = "^3.0.0"
-jinja2 = "^3.1.2"
+[dependency-groups]
+dev = [
+    "flake8~=7.0.0",
+    "flake8-quotes~=3.4.0",
+    "flake8-bugbear~=24.2.6",
+    "flake8-isort~=6.1.1",
+    "mypy~=1.9.0",
+    "types-Markdown~=3.6.0",
+]
 
-requests = "^2.31"
-pygrist-mini  = "^2023.2.1"
-
-strictyaml = "^1.7.3"
-
-markdown = "^3.6"
-
-[tool.poetry.dev-dependencies]
-flake8 = "^7.0.0"
-flake8-quotes = "^3.4.0"
-flake8-bugbear = "^24.2.6"
-flake8-isort = "^6.1.1"
-mypy = "^1.9.0"
-types-Markdown = "^3.6.0"
+[tool.hatch.build.targets.wheel]
+packages = ["fillform"]
 
 # vim: foldmethod=marker
