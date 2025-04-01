@@ -133,7 +133,11 @@ forms:
       # Student Committee Members for FAIR{{ CaseID }}
 
       **Appellant(s):** {{ Case_Appellants }}<br>
+      {% if Case_Hearing_start %}
       **Hearing time:** {{ Case_Hearing_start | format_timestamp("%B %d %I:%M %p") }}
+      {% else %}
+      **Hearing time:** (none?)
+      {% endif %}
 
       Notes:
 
