@@ -13,7 +13,7 @@ from strictyaml import (
     Enum,
     Map,
     MapPattern,
-    Optional as OptionalYml,
+    Optional,
     Seq,
     Str,
     load,
@@ -35,20 +35,21 @@ YAML_SCHEMA = Map({
             "table": Str(),
             "key_column": Str(),
             "response_time_column": Str(),
+
             "header_markdown": Str(),
 
-            OptionalYml("notify_from"): Str(),
-            OptionalYml("notify_to"): Str(),
-            OptionalYml("notify_if"): Str(),
-            OptionalYml("notify_subject"): Str(),
-            OptionalYml("notify_email"): Str(),
+            Optional("notify_from"): Str(),
+            Optional("notify_to"): Str(),
+            Optional("notify_if"): Str(),
+            Optional("notify_subject"): Str(),
+            Optional("notify_email"): Str(),
 
             "widgets": Seq(
                 Map({
                     "column": Str(),
                     "type": Enum(["text", "yesno"]),
-                    OptionalYml("label"): Str(),
-                    OptionalYml("optional"): Bool(),
+                    Optional("label"): Str(),
+                    Optional("optional"): Bool(),
                     })
                 )
             })
