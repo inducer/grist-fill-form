@@ -41,6 +41,7 @@ YAML_SCHEMA = Map({
             "key_column": Str(),
             "response_time_column": Str(),
             Optional("timezone"): Str(),
+            Optional("allow_resubmit"): Bool(),
 
             "header_markdown": Str(),
 
@@ -180,9 +181,10 @@ def render_form(
     user_input = {}
     for widget in form_config["widgets"]:
         col = widget["column"]
+
         if form_data is None:
             valid_msg = None
-            val = None
+            val = row[col]
         else:
             valid_msg = None
 
@@ -252,7 +254,7 @@ def fill_form(name: str, key: str):
         from zoneinfo import ZoneInfo
         from_ts: Callable[[float, str], str] = partial(
                     format_timestamp,
-                    timezone=ZoneInfo(form_config["timezone"].text))
+                    timezone=ZoneInfo(form_config["timezone"]))
     else:
         from warnings import warn
         warn("'timezone' key not specified, timestamps will be local", stacklevel=1)
@@ -288,10 +290,16 @@ def fill_form(name: str, key: str):
     from markdown import markdown
     header_html = markdown(header_markdown_expanded, extensions=["extra"])
 
+    allow_resubmit = form_config.get("allow_resubmit", False)
+
     if request.method == "GET":
         if row[form_config["response_time_column"]] is not None:
-            return respond_with_message(
-                jinja_env, "Your response has previously been recorded. ", "error")
+            if allow_resubmit:
+                flash("Your response has previously been recorded. "
+                      "You may update your submission below.")
+            else:
+                return respond_with_message(
+                    jinja_env, "Your response has previously been recorded. ", "error")
 
         _valid, widgets, _data = render_form(form_config, row)
 
@@ -305,7 +313,7 @@ def fill_form(name: str, key: str):
         return Response(html)
 
     elif request.method == "POST":
-        if row[form_config["response_time_column"]] is not None:
+        if not allow_resubmit and row[form_config["response_time_column"]] is not None:
             return respond_with_message(
                 jinja_env,
                 "Your response has previously been submitted. "
