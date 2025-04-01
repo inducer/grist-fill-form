@@ -16,15 +16,11 @@ jobs:
             uses: actions/setup-python@v5
             with:
                 python-version: '3.x'
-        - name: Install Poetry
-          uses: snok/install-poetry@v1.3.4
-          with:
-            version: "1.8.2"
-            virtualenvs-create: true
+        - name: Install uv
+          uses: astral-sh/setup-uv@v5
         -   name: "Main Script"
             run: |
-                poetry install
-                poetry run flake8 fillform
-                poetry run mypy fillform
+                uv run flake8 fillform
+                uv run mypy fillform
 
 # vim: sw=4
