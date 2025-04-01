@@ -95,3 +95,66 @@ forms:
         label: "Any comments? (optional)"
         type: text
         optional: true
+
+  student-request:
+    grist_root_url:  https://scicomp-grist.cs.illinois.edu
+    grist_api_key_file: /home/andreas/.grist-uiuc-api-key
+    grist_doc_id: s7VzXiAHXbwgivucYprb6z
+
+    # Optional, only effective if both are provided.
+    notify_from: andreask@illinois.edu
+    notify_to: andreask@illinois.edu
+
+    table: Student_requests
+    key_column: "Key"
+    response_time_column: "Last_response"
+    timezone: America/Chicago
+    allow_resubmit: true
+
+    notify_subject: >
+
+      FAIR{{ CaseID }}: Student members available
+
+    notify_email: |
+
+      Dear notification recipient,
+
+      Student members are available for FAIR{{ CaseID }}:
+
+      Primary: {{ Primary_Email }}
+      Backup: {{ Backup_Email }}
+      Comment: {{ Comment }}
+
+      Sincerely,
+      The form tool
+
+    header_markdown: |
+
+      # Student Committee Members for FAIR{{ CaseID }}
+
+      **Appellant(s):** {{ Case_Appellants }}<br>
+      **Hearing time:** {{ Case_Hearing_start | format_timestamp("%B %d %I:%M %p") }}
+
+      Notes:
+
+      - This form allows for resubmission. Simply revisit the same link
+        to update answers.
+      - All fields are optional.
+      - Need to remove committee members? Simply delete them and resubmit.
+
+    widgets:
+
+      - column: Primary_Email
+        label: "Email address of primary student member:"
+        type: text
+        optional: true
+
+      - column: Backup_Email
+        label: "Email address of backup student member:"
+        type: text
+        optional: true
+
+      - column: Comment
+        label: "Any comments?"
+        type: text
+        optional: true
