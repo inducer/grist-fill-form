@@ -3,14 +3,25 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from time import time
-from typing import Any, Dict, Mapping, Optional, Sequence, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from flask import Flask, Response, flash, request
 from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescape
 from pygrist_mini import GristClient
 from strictyaml import (
-    Bool, Enum, Map, MapPattern, Optional as OptionalYml, Seq, Str, load)
-from typing_extensions import Tuple
+    Bool,
+    Enum,
+    Map,
+    MapPattern,
+    Optional as OptionalYml,
+    Seq,
+    Str,
+    load,
+)
+
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
 
 
 YAML_SCHEMA = Map({
@@ -55,9 +66,9 @@ JINJA_ENV = Environment(
     undefined=StrictUndefined)
 
 
-def get_config() -> Dict[str, Any]:
-    with open(os.environ["GRIST_FILLFORM_CONFIG"], "r") as inf:
-        return cast(Dict[str, Any], load(inf.read(), YAML_SCHEMA).data)
+def get_config() -> dict[str, Any]:
+    with open(os.environ["GRIST_FILLFORM_CONFIG"]) as inf:
+        return cast("dict[str, Any]", load(inf.read(), YAML_SCHEMA).data)
 
 
 CONFIG = get_config()
@@ -81,8 +92,8 @@ def get_flashed_messages():
 
 # based on https://stackoverflow.com/a/76636602
 def exec_with_return(
-        code: str, location: str, globals: Optional[dict],
-        locals: Optional[dict] = None,
+        code: str, location: str, globals: dict | None,
+        locals: dict | None = None,
         ) -> Any:
     import ast
     a = ast.parse(code)
@@ -100,7 +111,7 @@ def exec_with_return(
         return eval(last_expression, globals, locals)
 
 
-def send_notify(form_config: Dict[str, Any], row_data: Dict[str, Any]) -> None:
+def send_notify(form_config: dict[str, Any], row_data: dict[str, Any]) -> None:
     import smtplib
     from email.message import EmailMessage
 
@@ -129,8 +140,8 @@ def send_notify(form_config: Dict[str, Any], row_data: Dict[str, Any]) -> None:
     s.quit()
 
 
-def respond_with_message(msg: str, category="message", status: Optional[int] = None):
-    #from pudb import set_trace; set_trace()
+def respond_with_message(msg: str, category="message", status: int | None = None):
+    # from pudb import set_trace; set_trace()
     flash(msg, category)
     resp_text = (JINJA_ENV
             .get_template("base.html")
@@ -144,15 +155,15 @@ class Widget:
     id: str
     label: str
     type: str
-    value: Optional[str]
-    validation_message: Optional[str]
+    value: str | None
+    validation_message: str | None
 
 
 def render_form(
-            form_config: Dict[str, Any],
-            row: Dict[str, Any],
-            form_data: Optional[Mapping[str, Any]] = None
-        ) -> Tuple[bool, Sequence[Widget], Dict[str, Any]]:
+            form_config: dict[str, Any],
+            row: dict[str, Any],
+            form_data: Mapping[str, Any] | None = None
+        ) -> tuple[bool, Sequence[Widget], dict[str, Any]]:
 
     valid = form_data is not None
 
@@ -167,9 +178,8 @@ def render_form(
             valid_msg = None
 
             val = form_data.get(col)
-            if not widget.get("optional", False):
-                if not val:
-                    valid_msg = "This field is required."
+            if not widget.get("optional", False) and not val:
+                valid_msg = "This field is required."
 
             if not valid_msg:
                 if widget["type"] == "yesno":
@@ -206,7 +216,7 @@ def fill_form(name: str, key: str):
     form_config = CONFIG["forms"][name]
 
     grist_root_url = form_config["grist_root_url"]
-    with open(form_config["grist_api_key_file"], "r") as inf:
+    with open(form_config["grist_api_key_file"]) as inf:
         grist_api_key = inf.read().strip()
     grist_doc_id = form_config["grist_doc_id"]
 

@@ -20,7 +20,7 @@ jobs:
           uses: astral-sh/setup-uv@v5
         -   name: "Main Script"
             run: |
-                uv run flake8 fillform
+                uv run ruff check
                 uv run mypy fillform
 
 # vim: sw=4
