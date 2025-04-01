@@ -3,7 +3,7 @@
 {% block content %}
   {{ header | safe }}
 
-  <form id="fillinForm" method="POST" class="mt-3">
+  <form id="fillInForm" method="POST" class="mt-3">
     {% for widget in widgets %}
       <div class="mb-3">
         {% if widget.type == "text" %}
