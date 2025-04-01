@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from functools import partial
 from time import time
 from typing import TYPE_CHECKING, Any, cast
+from zoneinfo import ZoneInfo
 
 from flask import Flask, Response, flash, request
 from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescape
@@ -21,7 +23,10 @@ from strictyaml import (
 
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Callable, Mapping, Sequence
+
+
+UTC = ZoneInfo("UTC")
 
 
 YAML_SCHEMA = Map({
@@ -35,6 +40,7 @@ YAML_SCHEMA = Map({
             "table": Str(),
             "key_column": Str(),
             "response_time_column": Str(),
+            Optional("timezone"): Str(),
 
             "header_markdown": Str(),
 
@@ -59,12 +65,6 @@ YAML_SCHEMA = Map({
 
 app = Flask(__name__)
 app.secret_key = os.environ["SECRET_KEY"]
-
-
-JINJA_ENV = Environment(
-    loader=PackageLoader("fillform"),
-    autoescape=select_autoescape(),
-    undefined=StrictUndefined)
 
 
 def get_config() -> dict[str, Any]:
@@ -112,7 +112,11 @@ def exec_with_return(
         return eval(last_expression, globals, locals)
 
 
-def send_notify(form_config: dict[str, Any], row_data: dict[str, Any]) -> None:
+def send_notify(
+            jinja_env: Environment,
+            form_config: dict[str, Any],
+            row_data: dict[str, Any],
+        ) -> None:
     import smtplib
     from email.message import EmailMessage
 
@@ -122,14 +126,14 @@ def send_notify(form_config: dict[str, Any], row_data: dict[str, Any]) -> None:
             return
 
     msg = EmailMessage()
-    msg.set_content(JINJA_ENV
+    msg.set_content(jinja_env
                     .from_string(form_config["notify_email"])
                     .render(**row_data))
 
     import re
     msg["Subject"], _ = (
         re.subn(r"\s+", " ",
-                JINJA_ENV
+                jinja_env
                 .from_string(form_config["notify_subject"])
                 .render(**row_data)))
 
@@ -141,10 +145,14 @@ def send_notify(form_config: dict[str, Any], row_data: dict[str, Any]) -> None:
     s.quit()
 
 
-def respond_with_message(msg: str, category="message", status: int | None = None):
-    # from pudb import set_trace; set_trace()
+def respond_with_message(
+            jinja_env: Environment,
+            msg: str,
+            category="message",
+            status: int | None = None,
+        ) -> Response:
     flash(msg, category)
-    resp_text = (JINJA_ENV
+    resp_text = (jinja_env
             .get_template("base.html")
             .render(messages=get_flashed_messages()))
 
@@ -209,12 +217,49 @@ def render_form(
     return valid, widgets, user_input
 
 
+def format_date_timestamp(
+            tstamp: float,
+            format: str = "%Y-%m-%d",
+        ) -> str:
+    import datetime
+    dt = datetime.datetime.fromtimestamp(tstamp, tz=UTC).date()
+    return dt.strftime(format)
+
+
+def format_timestamp(
+            tstamp: float,
+            format: str = "%c",
+            timezone: ZoneInfo | None = None
+        ) -> str:
+    import datetime
+    dt = datetime.datetime.fromtimestamp(tstamp, tz=timezone)
+    return dt.strftime(format)
+
+
 @app.route("/form/<name>/<key>", methods=["GET", "POST"])
 def fill_form(name: str, key: str):
+    jinja_env = Environment(
+        loader=PackageLoader("fillform"),
+        autoescape=select_autoescape(),
+        undefined=StrictUndefined)
+
     if name not in CONFIG["forms"]:
-        return respond_with_message("Not found", "error", status=404)
+        return respond_with_message(jinja_env, "Not found", "error", status=404)
 
     form_config = CONFIG["forms"][name]
+
+    if "timezone" in form_config:
+        from zoneinfo import ZoneInfo
+        from_ts: Callable[[float, str], str] = partial(
+                    format_timestamp,
+                    timezone=ZoneInfo(form_config["timezone"].text))
+    else:
+        from warnings import warn
+        warn("'timezone' key not specified, timestamps will be local", stacklevel=1)
+        from_ts = format_timestamp
+
+    jinja_env.filters["format_timestamp"] = from_ts
+    jinja_env.filters["format_date_timestamp"] = format_date_timestamp
 
     grist_root_url = form_config["grist_root_url"]
     with open(form_config["grist_api_key_file"]) as inf:
@@ -227,16 +272,17 @@ def fill_form(name: str, key: str):
               form_config["table"],
               filter={form_config["key_column"]: [key]})
     if not rows:
-        return respond_with_message("Not found", "error", status=404)
+        return respond_with_message(jinja_env, "Not found", "error", status=404)
     if len(rows) > 1:
         return respond_with_message(
-            "More than one record found for request key", "error", status=500)
+            jinja_env, "More than one record found for request key", "error",
+            status=500)
 
     row_data, = rows
     row = row_data["fields"]
     row_id = row_data["id"]
 
-    header_markdown_expanded = (JINJA_ENV
+    header_markdown_expanded = (jinja_env
         .from_string(form_config["header_markdown"])
         .render(**row))
     from markdown import markdown
@@ -245,11 +291,11 @@ def fill_form(name: str, key: str):
     if request.method == "GET":
         if row[form_config["response_time_column"]] is not None:
             return respond_with_message(
-                "Your response has previously been recorded. ", "error")
+                jinja_env, "Your response has previously been recorded. ", "error")
 
         _valid, widgets, _data = render_form(form_config, row)
 
-        html = JINJA_ENV.get_template("index.html").render(
+        html = jinja_env.get_template("index.html").render(
             messages=get_flashed_messages(),
             was_validated=False,
             header=header_html,
@@ -261,12 +307,13 @@ def fill_form(name: str, key: str):
     elif request.method == "POST":
         if row[form_config["response_time_column"]] is not None:
             return respond_with_message(
+                jinja_env,
                 "Your response has previously been submitted. "
                 "The present response has not been recorded.", "error")
 
         valid, widgets, user_input = render_form(form_config, row, request.form)
         if not valid:
-            html = JINJA_ENV.get_template("index.html").render(
+            html = jinja_env.get_template("index.html").render(
                 messages=get_flashed_messages(),
                 was_validated=True,
                 header=header_html,
@@ -281,7 +328,7 @@ def fill_form(name: str, key: str):
                 and form_config.get("notify_from") is not None):
             notify_data = row.copy()
             notify_data.update(user_input)
-            send_notify(form_config, notify_data)
+            send_notify(jinja_env, form_config, notify_data)
 
         # }}}
 
@@ -292,7 +339,8 @@ def fill_form(name: str, key: str):
 
         grist_client.patch_records(form_config["table"], [(row_id, row_updates)])
 
-        return respond_with_message("Thank you for submitting your response.")
+        return respond_with_message(
+                jinja_env, "Thank you for submitting your response.")
     else:
         raise ValueError(f"unexpected method {request.method}")
 
