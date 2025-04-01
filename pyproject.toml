@@ -25,15 +25,54 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "flake8~=7.0.0",
-    "flake8-quotes~=3.4.0",
-    "flake8-bugbear~=24.2.6",
-    "flake8-isort~=6.1.1",
+    "ruff~=0.11.2",
     "mypy~=1.9.0",
     "types-Markdown~=3.6.0",
 ]
 
 [tool.hatch.build.targets.wheel]
 packages = ["fillform"]
+
+[tool.ruff]
+preview = true
+
+[tool.ruff.lint]
+extend-select = [
+    "B",   # flake8-bugbear
+    "C",   # flake8-comprehensions
+    "E",   # pycodestyle
+    "F",   # pyflakes
+    "G",   # flake8-logging-format
+    "I",   # flake8-isort
+    "N",   # pep8-naming
+    "NPY", # numpy
+    "PGH", # pygrep-hooks
+    "Q",   # flake8-quotes
+    "RUF", # ruff
+    "SIM", # flake8-simplify
+    "TC",  # flake8-type-checking
+    "UP",  # pyupgrade
+    "W",   # pycodestyle
+]
+extend-ignore = [
+    "C90",  # McCabe complexity
+]
+
+[tool.ruff.lint.flake8-quotes]
+docstring-quotes = "double"
+inline-quotes = "double"
+multiline-quotes = "double"
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-local-folder = [
+    "pytools",
+]
+lines-after-imports = 2
+required-imports = ["from __future__ import annotations"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
 
 # vim: foldmethod=marker
