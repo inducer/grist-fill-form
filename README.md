@@ -6,8 +6,8 @@ being that this focuses on adding data to an existing row, whereas Grist's
 built-in forms appear to focus on adding new rows. Accordingly, this can
 show data existing in the row to the user, to help them answer.
 
-- Forms are configured in a YAML file. See [`config.yml`](config.yml)
-  for an example. 
+- Forms are configured in a YAML file. See
+  [`config-example.yml`](config-example.yml) for an example. 
 - Multiple forms can be configured by `NAME`, 
   this is the identifier under `forms`.
   This appears in the URL as `https://HOSTNAME/form/NAME/KEY`.
