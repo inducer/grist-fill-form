@@ -4,23 +4,15 @@ import os
 from dataclasses import dataclass
 from functools import partial
 from time import time
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Literal
 from zoneinfo import ZoneInfo
 
+import yaml
 from flask import Flask, Response, flash, request
 from granian.utils.proxies import wrap_wsgi_with_proxy_headers
 from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescape
+from pydantic import BaseModel
 from pygrist_mini import GristClient
-from strictyaml import (
-    Bool,
-    Enum,
-    Map,
-    MapPattern,
-    Optional,
-    Seq,
-    Str,
-    load,
-)
 
 
 if TYPE_CHECKING:
@@ -30,39 +22,33 @@ if TYPE_CHECKING:
 UTC = ZoneInfo("UTC")
 
 
-YAML_SCHEMA = Map({
-    "forms": MapPattern(
-        Str(),
-        Map({
-            "grist_root_url": Str(),
-            "grist_api_key_file": Str(),
-            "grist_doc_id": Str(),
+class WidgetConfig(BaseModel):
+    column: str
+    type: Literal["text", "yesno"]
+    label: str | None = None
+    optional: bool = False
 
-            "table": Str(),
-            "key_column": Str(),
-            "response_time_column": Str(),
-            Optional("timezone"): Str(),
-            Optional("allow_resubmit"): Bool(),
 
-            "header_markdown": Str(),
+class FormConfig(BaseModel):
+    grist_root_url: str
+    grist_api_key_file: str
+    grist_doc_id: str
+    table: str
+    key_column: str
+    response_time_column: str
+    timezone: str | None = None
+    allow_resubmit: bool = False
+    header_markdown: str
+    notify_from: str | None = None
+    notify_to: str | None = None
+    notify_if: str | None = None
+    notify_subject: str | None = None
+    notify_email: str | None = None
+    widgets: list[WidgetConfig]
 
-            Optional("notify_from"): Str(),
-            Optional("notify_to"): Str(),
-            Optional("notify_if"): Str(),
-            Optional("notify_subject"): Str(),
-            Optional("notify_email"): Str(),
 
-            "widgets": Seq(
-                Map({
-                    "column": Str(),
-                    "type": Enum(["text", "yesno"]),
-                    Optional("label"): Str(),
-                    Optional("optional"): Bool(),
-                    })
-                )
-            })
-        ),
-    })
+class Config(BaseModel):
+    forms: dict[str, FormConfig]
 
 
 flask_app = Flask(__name__)
@@ -71,9 +57,10 @@ flask_app.secret_key = os.environ["SECRET_KEY"]
 app = wrap_wsgi_with_proxy_headers(flask_app)
 
 
-def get_config() -> dict[str, Any]:
+def get_config() -> Config:
     with open(os.environ["GRIST_FILLFORM_CONFIG"]) as inf:
-        return cast("dict[str, Any]", load(inf.read(), YAML_SCHEMA).data)
+        data = yaml.safe_load(inf)
+        return Config.model_validate(data)
 
 
 CONFIG = get_config()
@@ -118,31 +105,34 @@ def exec_with_return(
 
 def send_notify(
             jinja_env: Environment,
-            form_config: dict[str, Any],
+            form_config: FormConfig,
             row_data: dict[str, Any],
         ) -> None:
     import smtplib
     from email.message import EmailMessage
 
-    if "notify_if" in form_config:
-        do_notify = exec_with_return(form_config["notify_if"], "notify_if", row_data)
+    if form_config.notify_if is not None:
+        do_notify = exec_with_return(form_config.notify_if, "notify_if", row_data)
         if not do_notify:
             return
 
+    assert form_config.notify_email is not None
+    assert form_config.notify_subject is not None
+
     msg = EmailMessage()
     msg.set_content(jinja_env
-                    .from_string(form_config["notify_email"])
+                    .from_string(form_config.notify_email)
                     .render(**row_data))
 
     import re
     msg["Subject"], _ = (
         re.subn(r"\s+", " ",
                 jinja_env
-                .from_string(form_config["notify_subject"])
+                .from_string(form_config.notify_subject)
                 .render(**row_data)))
 
-    msg["From"] = form_config["notify_from"]
-    msg["To"] = form_config["notify_to"]
+    msg["From"] = form_config.notify_from
+    msg["To"] = form_config.notify_to
 
     s = smtplib.SMTP("localhost")
     s.send_message(msg)
@@ -152,7 +142,7 @@ def send_notify(
 def respond_with_message(
             jinja_env: Environment,
             msg: str,
-            category="message",
+            category: Literal["error", "message"] = "message",
             status: int | None = None,
         ) -> Response:
     flash(msg, category)
@@ -173,17 +163,17 @@ class Widget:
 
 
 def render_form(
-            form_config: dict[str, Any],
-            row: dict[str, Any],
+            form_config: FormConfig,
+            row: Mapping[str, Any],
             form_data: Mapping[str, Any] | None = None
-        ) -> tuple[bool, Sequence[Widget], dict[str, Any]]:
+        ) -> tuple[bool, Sequence[Widget], dict[str, object]]:
 
     valid = form_data is not None
 
     widgets = []
     user_input = {}
-    for widget in form_config["widgets"]:
-        col = widget["column"]
+    for widget in form_config.widgets:
+        col = widget.column
 
         if form_data is None:
             valid_msg = None
@@ -192,17 +182,17 @@ def render_form(
             valid_msg = None
 
             val = form_data.get(col)
-            if not widget.get("optional", False) and not val:
+            if not widget.optional and not val:
                 valid_msg = "This field is required."
 
             if not valid_msg:
-                if widget["type"] == "yesno":
+                if widget.type == "yesno":
                     if val not in ["0", "1"]:
                         valid_msg = "Invalid input."
                     else:
                         user_input[col] = bool(int(form_data[col]))
 
-                elif widget["type"] == "text":
+                elif widget.type == "text":
                     user_input[col] = val if val else ""
 
                 else:
@@ -213,8 +203,9 @@ def render_form(
 
         widgets.append(Widget(
                            id=col,
-                           label=widget.get("label", col.replace("_", " ")),
-                           type=widget["type"],
+                           label=(widget.label
+                               if widget.label else col.replace("_", " ")),
+                           type=widget.type,
                            value=val if val else "",
                            validation_message=valid_msg,
                        ))
@@ -248,16 +239,16 @@ def fill_form(name: str, key: str):
         autoescape=select_autoescape(),
         undefined=StrictUndefined)
 
-    if name not in CONFIG["forms"]:
+    if name not in CONFIG.forms:
         return respond_with_message(jinja_env, "Not found", "error", status=404)
 
-    form_config = CONFIG["forms"][name]
+    form_config = CONFIG.forms[name]
 
-    if "timezone" in form_config:
+    if form_config.timezone is not None:
         from zoneinfo import ZoneInfo
         from_ts: Callable[[float, str], str] = partial(
                     format_timestamp,
-                    timezone=ZoneInfo(form_config["timezone"]))
+                    timezone=ZoneInfo(form_config.timezone))
     else:
         from warnings import warn
         warn("'timezone' key not specified, timestamps will be local", stacklevel=1)
@@ -266,16 +257,16 @@ def fill_form(name: str, key: str):
     jinja_env.filters["format_timestamp"] = from_ts
     jinja_env.filters["format_date_timestamp"] = format_date_timestamp
 
-    grist_root_url = form_config["grist_root_url"]
-    with open(form_config["grist_api_key_file"]) as inf:
+    grist_root_url = form_config.grist_root_url
+    with open(form_config.grist_api_key_file) as inf:
         grist_api_key = inf.read().strip()
-    grist_doc_id = form_config["grist_doc_id"]
+    grist_doc_id = form_config.grist_doc_id
 
     grist_client = GristClient(grist_root_url, grist_api_key, grist_doc_id)
 
     rows = grist_client.get_records(
-              form_config["table"],
-              filter={form_config["key_column"]: [key]})
+              form_config.table,
+              filter={form_config.key_column: [key]})
     if not rows:
         return respond_with_message(jinja_env, "Not found", "error", status=404)
     if len(rows) > 1:
@@ -288,15 +279,15 @@ def fill_form(name: str, key: str):
     row_id = row_data["id"]
 
     header_markdown_expanded = (jinja_env
-        .from_string(form_config["header_markdown"])
+        .from_string(form_config.header_markdown)
         .render(**row))
     from markdown import markdown
     header_html = markdown(header_markdown_expanded, extensions=["extra"])
 
-    allow_resubmit = form_config.get("allow_resubmit", False)
+    allow_resubmit = form_config.allow_resubmit
 
     if request.method == "GET":
-        if row[form_config["response_time_column"]] is not None:
+        if row[form_config.response_time_column] is not None:
             if allow_resubmit:
                 flash("Your response has previously been recorded. "
                       "You may update your submission below.")
@@ -316,7 +307,7 @@ def fill_form(name: str, key: str):
         return Response(html)
 
     elif request.method == "POST":
-        if not allow_resubmit and row[form_config["response_time_column"]] is not None:
+        if not allow_resubmit and row[form_config.response_time_column] is not None:
             return respond_with_message(
                 jinja_env,
                 "Your response has previously been submitted. "
@@ -335,20 +326,20 @@ def fill_form(name: str, key: str):
 
         # {{{ notification email
 
-        if (form_config.get("notify_to") is not None
-                and form_config.get("notify_from") is not None):
-            notify_data = row.copy()
+        if (form_config.notify_to is not None
+                and form_config.notify_from is not None):
+            notify_data = dict(row)
             notify_data.update(user_input)
             send_notify(jinja_env, form_config, notify_data)
 
         # }}}
 
-        row_updates = {
-                form_config["response_time_column"]: time(),
+        row_updates: dict[str, object] = {
+                form_config.response_time_column: time(),
         }
         row_updates.update(user_input)
 
-        grist_client.patch_records(form_config["table"], [(row_id, row_updates)])
+        grist_client.patch_records(form_config.table, [(row_id, row_updates)])
 
         return respond_with_message(
                 jinja_env, "Thank you for submitting your response.")
