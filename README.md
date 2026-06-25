@@ -30,22 +30,31 @@ To run, first run `uv sync` (see [uv
 docs](https://docs.astral.sh/uv/)), then run `dev.sh`. Generalize/deploy
 from there.
 
-## UWSGI config for deployment
+## Systemd service file config for deployment
 
 ```
-[uwsgi]
-plugins = python311
-socket = /tmp/uwsgi-grist-fill.sock
+[Unit]
+Description=Grist Fill Form via Granian
+After=network.target
 
-env = GRIST_FILLFORM_CONFIG=/home/grist-fill/grist-fill-form/config.yml
-env = SECRET_KEY=CHANGE_ME
+[Service]
+User={{ user }}
+Group={{ user }}
 
-chdir = /home/grist-fill/grist-fill-form
-module=fillform.app:app
-uid = grist-fill
-gid = grist-fill
-need-app = 1
-workers = 1
-virtualenv=/home/grist-fill/grist-fill-form/.venv
-buffer-size = 16384
+WorkingDirectory={{ repo_dir }}
+
+Environment="GRANIAN_HOST=127.0.0.1"
+Environment="GRANIAN_PORT=8124"
+Environment="GRANIAN_WORKERS=1"
+Environment="GRANIAN_WORKERS_MAX_RSS=500"
+Environment="GRANIAN_INTERFACE=wsgi"
+Environment="GRANIAN_RESPAWN_FAILED_WORKERS=true"
+
+Environment=SECRET_KEY={{ flask_secret_key }}
+Environment=GRIST_FILL_FORM_CONFIG={{ config_file }}
+
+ExecStart={{ repo_dir }}/.venv/bin/granian fillform.app:app
+
+[Install]
+WantedBy=multi-user.target
 ```

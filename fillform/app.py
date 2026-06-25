@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, cast
 from zoneinfo import ZoneInfo
 
 from flask import Flask, Response, flash, request
+from granian.utils.proxies import wrap_wsgi_with_proxy_headers
 from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescape
 from pygrist_mini import GristClient
 from strictyaml import (
@@ -64,8 +65,10 @@ YAML_SCHEMA = Map({
     })
 
 
-app = Flask(__name__)
-app.secret_key = os.environ["SECRET_KEY"]
+flask_app = Flask(__name__)
+flask_app.secret_key = os.environ["SECRET_KEY"]
+
+app = wrap_wsgi_with_proxy_headers(flask_app)
 
 
 def get_config() -> dict[str, Any]:
@@ -238,7 +241,7 @@ def format_timestamp(
     return dt.strftime(format)
 
 
-@app.route("/form/<name>/<key>", methods=["GET", "POST"])
+@flask_app.route("/form/<name>/<key>", methods=["GET", "POST"])
 def fill_form(name: str, key: str):
     jinja_env = Environment(
         loader=PackageLoader("fillform"),
