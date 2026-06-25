@@ -21,6 +21,7 @@ dependencies = [
     "pygrist-mini~=2023.2.1",
     "strictyaml~=1.7.3",
     "markdown~=3.6",
+    "granian~=2.7"
 ]
 
 [dependency-groups]
