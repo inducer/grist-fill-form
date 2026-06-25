@@ -97,8 +97,8 @@ def get_flashed_messages():
 
 # based on https://stackoverflow.com/a/76636602
 def exec_with_return(
-        code: str, location: str, globals: dict | None,
-        locals: dict | None = None,
+        code: str, location: str, globals: dict[str, object] | None,
+        locals: dict[str, object] | None = None,
         ) -> Any:
     import ast
     a = ast.parse(code)
