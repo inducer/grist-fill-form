@@ -98,7 +98,7 @@ def exec_with_return(
         elif isinstance(a_last, (ast.AnnAssign, ast.AugAssign)):
             last_expression = ast.unparse(a_last.target)
     compiled_code = compile(ast.unparse(a), location, "exec")
-    exec(compiled_code, globals, locals)  # noqa: S102
+    exec(compiled_code, globals, locals)
     if last_expression:
         return eval(last_expression, globals, locals)
 
@@ -193,7 +193,7 @@ def render_form(
                         user_input[col] = bool(int(form_data[col]))
 
                 elif widget.type == "text":
-                    user_input[col] = val if val else ""
+                    user_input[col] = val or ""
 
                 else:
                     raise AssertionError("invalid widget type")
@@ -203,10 +203,9 @@ def render_form(
 
         widgets.append(Widget(
                            id=col,
-                           label=(widget.label
-                               if widget.label else col.replace("_", " ")),
+                           label=(widget.label or col.replace("_", " ")),
                            type=widget.type,
-                           value=val if val else "",
+                           value=val or "",
                            validation_message=valid_msg,
                        ))
 
